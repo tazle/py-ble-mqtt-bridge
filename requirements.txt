@@ -1,0 +1,3 @@
+-e git://github.com/TheCellule/python-bleson@54f8439899141b1a3c6b4345e518c50c703aca44#egg=bleson-0.0.13
+hbmqtt
+json-tricks
