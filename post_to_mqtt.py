@@ -24,6 +24,8 @@ def on_advertisement(advertisement):
         send_queue.put(advertisement_to_json(advertisement).encode("utf-8"))
     except asyncio.QueueFull:
         print("Send queue full")
+    except Exception as e:
+        print("Some other error", e)
 
 def start_listen_ble():
     try:
@@ -53,7 +55,7 @@ async def post_data():
             data = await send_queue.get()
             await client.publish(mqtt_topic, data.encode('utf-8'))
         except Exception as e:
-            # Can't really do anything, better luck next time
+            print("Failed to publish", e)
             pass
 
 
