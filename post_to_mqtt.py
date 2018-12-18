@@ -26,7 +26,6 @@ def advertisement_to_json(advertisement):
 client = MQTTClient()
 
 def on_advertisement(advertisement):
-    print("Got advertisement", advertisement)
     try:
         ble_queue.put(advertisement_to_json(advertisement))
     except queue.Full:
