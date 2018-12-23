@@ -1,4 +1,4 @@
--e git://github.com/TheCellule/python-bleson@master#egg=bleson-0.0.13
+-e git://github.com/TheCellule/python-bleson@cf24caa8d43bbb6ec6ef409f05c8ba180e21c91d#egg=bleson-0.0.13
 hbmqtt
 json-tricks
 janus
