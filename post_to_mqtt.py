@@ -6,6 +6,7 @@ import asyncio
 import sys
 import janus
 import queue
+import json
 
 mqtt_url = os.environ.get("MQTT_URL", "mqtt://localhost/")
 mqtt_topic = os.environ.get("MQTT_TOPIC", "/home/ble")
@@ -20,22 +21,27 @@ def bytes_to_string(obj):
         return obj.decode('iso-8859-1')
     return obj
 
-def advertisement_to_json(advertisement):
-    return json_tricks.dumps(advertisement, extra_obj_encoders=[bytes_to_string], primitives=True)
+def advertisement_to_json(advertisement, receiver_mac):
+    intermediate = json.loads(json_tricks.dumps(advertisement, extra_obj_encoders=[bytes_to_string], primitives=True))
+    intermediate['receiver_mac'] = receiver_mac
+    return json.dumps(intermediate)
 
 client = MQTTClient()
 
 def on_advertisement(advertisement):
     try:
-        ble_queue.put(advertisement_to_json(advertisement))
+        ble_queue.put(advertisement_to_json(advertisement, receiver_mac))
     except queue.Full:
         print("Send queue full")
     except Exception as e:
         print("Some other error", e)
 
+receiver_mac = None
 def start_listen_ble():
     try:
         adapter = get_provider().get_adapter()
+        global receiver_mac
+        receiver_mac = adapter.get_device_info().address.address
 
         observer = Observer(adapter)
         observer.on_advertising_data = on_advertisement
