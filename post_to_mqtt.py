@@ -1,12 +1,13 @@
 from hbmqtt.client import MQTTClient, ConnectException
 from bleson import get_provider, Observer
 import os
-import json_tricks
 import asyncio
 import sys
 import janus
 import queue
 import json
+import pickle
+from bleson.core.types import ValueObject, UUID16, UUID128, BDAddress
 
 mqtt_url = os.environ.get("MQTT_URL", "mqtt://localhost/")
 mqtt_topic = os.environ.get("MQTT_TOPIC", "/home/ble")
@@ -21,16 +22,38 @@ def bytes_to_string(obj):
         return obj.decode('iso-8859-1')
     return obj
 
+fields = ["svc_data_uuid32", "uuid16s", "tx_pwr_lvl", "name_is_complete", "uuid32s", "raw_data", "adv_itvl", "flags", "service_data", "rssi", "uuid128s", "appearance", "type", "svc_data_uuid16", "uri", "public_tgt_addr", "_name", "svc_data_uuid128", "address_type", "mfg_data", "address"]
+
+class BlesonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, bytes):
+            return bytes_to_string(obj)
+        if isinstance(obj, UUID16):
+            return {"_uuid" : obj._uuid}
+        if isinstance(obj, UUID128):
+            return {"_uuid" : obj._uuid}
+        if isinstance(obj, BDAddress):
+            return {"address": obj.address}
+        return json.JSONEncoder.default(self, obj)
+
+def to_json(object, fields):
+    result = {}
+    for field in fields:
+        value = getattr(object, field)
+        result[field] = value
+    return result
+
 def advertisement_to_json(advertisement, receiver_mac):
-    intermediate = json.loads(json_tricks.dumps(advertisement, extra_obj_encoders=[bytes_to_string], primitives=True))
+    intermediate = to_json(advertisement, fields)
     intermediate['receiver_mac'] = receiver_mac
-    return json.dumps(intermediate)
+    return json.dumps(intermediate, cls=BlesonEncoder)
 
 client = MQTTClient()
 
 def on_advertisement(advertisement):
     try:
-        ble_queue.put(advertisement_to_json(advertisement, receiver_mac))
+        payload = advertisement_to_json(advertisement, receiver_mac)
+        ble_queue.put(payload)
     except queue.Full:
         print("Send queue full")
     except Exception as e:
