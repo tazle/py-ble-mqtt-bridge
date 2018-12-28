@@ -8,6 +8,7 @@ import queue
 import json
 import pickle
 from bleson.core.types import ValueObject, UUID16, UUID128, BDAddress
+import time
 
 mqtt_url = os.environ.get("MQTT_URL", "mqtt://localhost/")
 mqtt_topic = os.environ.get("MQTT_TOPIC", "/home/ble")
@@ -50,7 +51,10 @@ def advertisement_to_json(advertisement, receiver_mac):
 
 client = MQTTClient()
 
+last_received_timestamp = time.time()
 def on_advertisement(advertisement):
+    global last_received_timestamp
+    last_received_timestamp = time.time()
     try:
         payload = advertisement_to_json(advertisement, receiver_mac)
         ble_queue.put(payload)
@@ -83,8 +87,20 @@ def start_send_test_data():
             await asyncio.sleep(1)
     asyncio.ensure_future(generate_test_data())
 
+BLE_RECEIVE_TIMEOUT = 15
+
+async def watchdog():
+    print("Starting watchdog")
+    while True:
+        now = time.time()
+        since_last_receive = (now - last_received_timestamp)
+        if since_last_receive > BLE_RECEIVE_TIMEOUT:
+            print("No new BT data in %d seconds, exiting" %BLE_RECEIVE_TIMEOUT)
+            sys.exit(1)
+        await asyncio.sleep(1)
 
 async def post_data():
+    print("Starting MQTT sender")
     while True:
         try:
             data = await mqtt_queue.get()
@@ -96,6 +112,7 @@ async def post_data():
 
 async def main():
     try:
+        print("Connecting")
         await client.connect(mqtt_url)
         print("Connected")
         if not 'test' in sys.argv:
@@ -106,6 +123,7 @@ async def main():
         print("Connection failed: %s" % e)
         asyncio.get_event_loop().stop()
 
+asyncio.ensure_future(watchdog())
 asyncio.ensure_future(post_data())
 asyncio.ensure_future(main())
 asyncio.get_event_loop().run_forever()
