@@ -88,27 +88,35 @@ def start_send_test_data():
     asyncio.ensure_future(generate_test_data())
 
 BLE_RECEIVE_TIMEOUT = 15
+MQTT_PUBLISH_TIMEOUT = 15
 
 async def watchdog():
     print("Starting watchdog")
     while True:
         now = time.time()
         since_last_receive = (now - last_received_timestamp)
+        since_last_publish = (now - last_publish_timestamp)
+
         if since_last_receive > BLE_RECEIVE_TIMEOUT:
             print("No new BT data in %d seconds, exiting" %BLE_RECEIVE_TIMEOUT)
             sys.exit(1)
+        if since_last_publish > MQTT_PUBLISH_TIMEOUT:
+            print("Unable to publish to MQTT in %d seconds, exiting" %MQTT_PUBLISH_TIMEOUT)
+            sys.exit(2)
+
         await asyncio.sleep(1)
 
+last_publish_timestamp = time.time()
 async def post_data():
+    global last_publish_timestamp
     print("Starting MQTT sender")
     while True:
         try:
             data = await mqtt_queue.get()
             await client.publish(mqtt_topic, data.encode('utf-8'))
+            last_publish_timestamp = time.time()
         except Exception as e:
             print("Failed to publish", e)
-            pass
-
 
 async def main():
     try:
