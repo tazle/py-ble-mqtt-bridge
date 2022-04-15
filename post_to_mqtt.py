@@ -140,7 +140,7 @@ async def main(mode=OPERATIONAL):
 if __name__ == '__main__':
     chosen_mode = OPERATIONAL
     if "test" in sys.argv:
-        mode = TEST
+        chosen_mode = TEST
     asyncio.ensure_future(watchdog())
     asyncio.ensure_future(post_data())
     asyncio.ensure_future(main(chosen_mode))
