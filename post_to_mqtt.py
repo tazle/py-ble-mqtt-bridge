@@ -1,4 +1,4 @@
-from amqtt.client import MQTTClient, ConnectException
+from hbmqtt.client import MQTTClient, ConnectException
 from bleson import get_provider, Observer
 import os
 import asyncio
