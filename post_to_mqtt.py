@@ -102,10 +102,10 @@ async def watchdog():
 
         if since_last_receive > BLE_RECEIVE_TIMEOUT:
             print("No new BT data in %d seconds, exiting" %BLE_RECEIVE_TIMEOUT)
-            sys.exit(1)
+            os._exit(1)
         if since_last_publish > MQTT_PUBLISH_TIMEOUT:
             print("Unable to publish to MQTT in %d seconds, exiting" %MQTT_PUBLISH_TIMEOUT)
-            sys.exit(2)
+            os._exit(2)
 
         await asyncio.sleep(1)
 
