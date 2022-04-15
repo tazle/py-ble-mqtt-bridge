@@ -1,4 +1,4 @@
-from hbmqtt.client import MQTTClient, ConnectException
+from amqtt.client import MQTTClient, ConnectException
 from bleson import get_provider, Observer
 import os
 import asyncio
@@ -66,6 +66,7 @@ def on_advertisement(advertisement):
 receiver_mac = None
 def start_listen_ble():
     try:
+        print("Initializing BLE support")
         adapter = get_provider().get_adapter()
         global receiver_mac
         receiver_mac = adapter.get_device_info().address.address
@@ -73,6 +74,7 @@ def start_listen_ble():
         observer = Observer(adapter)
         observer.on_advertising_data = on_advertisement
 
+        print("Starting BLE receiver")
         observer.start()
     except OSError:
         print("Error listening for BLE advertisements, using fixed test data instead")
@@ -80,6 +82,7 @@ def start_listen_ble():
         start_send_test_data()
 
 def start_send_test_data():
+    print("Starting to send test data")
     data = """{"svc_data_uuid16": null, "uri": null, "type": "ADV_IND", "adv_itvl": null, "svc_data_uuid32": null, "flags": 26, "address_type": "PUBLIC", "appearance": null, "svc_data_uuid128": null, "rssi": -53, "raw_data": null, "tx_pwr_lvl": null, "uuid128s": [{"_uuid_obj": {"int": 270829573007142736156654800289003511292}, "_uuid": "cbbfe0e1-f7f3-4206-84e0-84cbb3d09dfc"}], "uuid16s": [], "_name": null, "public_tgt_addr": null, "mfg_data": null, "address": {"address": "88:82:12:99:0F:D8"}, "name_is_complete": false, "uuid32s": [], "service_data": null}"""
     async def generate_test_data():
         while True:
@@ -118,12 +121,15 @@ async def post_data():
         except Exception as e:
             print("Failed to publish", e)
 
-async def main():
+OPERATIONAL="operational"
+TEST="test"
+
+async def main(mode=OPERATIONAL):
     try:
         print("Connecting")
         await client.connect(mqtt_url)
         print("Connected")
-        if not 'test' in sys.argv:
+        if mode ==OPERATIONAL:
             start_listen_ble()
         else:
             start_send_test_data()
@@ -131,7 +137,11 @@ async def main():
         print("Connection failed: %s" % e)
         asyncio.get_event_loop().stop()
 
-asyncio.ensure_future(watchdog())
-asyncio.ensure_future(post_data())
-asyncio.ensure_future(main())
-asyncio.get_event_loop().run_forever()
+if __name__ == '__main__':
+    chosen_mode = OPERATIONAL
+    if "test" in sys.argv:
+        mode = TEST
+    asyncio.ensure_future(watchdog())
+    asyncio.ensure_future(post_data())
+    asyncio.ensure_future(main(chosen_mode))
+    asyncio.get_event_loop().run_forever()
